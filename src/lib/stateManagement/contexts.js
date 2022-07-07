@@ -1,10 +1,11 @@
 import { createContext, useContext } from "react";
-import { pickFromObj } from "../util";
 
 // An object that contains all contexts for state management
 export const contexts = {
     CurPosContext: createContext(),
     MovementContext: createContext(),
+    ItemsContext: createContext(),
+    AlignContext: createContext(),
 }
 
 /**

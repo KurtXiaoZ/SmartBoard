@@ -5,8 +5,8 @@ export const movementState = {
 
 export const movementReducer = (state, action) => {
     switch(action.type) {
-        case 'increment':
-            return { ...state, value2: state.value2 + 1 };
+        case 'setMovState':
+            return action.payload;
         case 'decrement':
             return { ...state, value2: state.value2 - 1 };
         default:
