@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, memo, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import './index.css';
 import { DataCenter } from '../../lib/DataCenter';
 import { contexts } from "../../lib/stateManagement/contexts";
@@ -7,17 +7,11 @@ import { contexts } from "../../lib/stateManagement/contexts";
 
 const dataCenter = new DataCenter();
 
-const areEqual = (prevProps, nextProps) => {
-
-    return false;
-}
-
-export const LineVer = memo(props => {
+export const LineVer = (props) => {
     const {
         left,
         itemId,
     } = props;
-    
     const [display, setDisplay] = useState(false);
     const { moving } = useContext(contexts['MovementContext']);
     useEffect(() => {
@@ -42,4 +36,4 @@ export const LineVer = memo(props => {
     }, [moving]);
 
     return <div className='canvas-component-line-ver' style={{left: left + 'px', display: display ? "block" : "none"}}></div>;
-}, areEqual);
+};

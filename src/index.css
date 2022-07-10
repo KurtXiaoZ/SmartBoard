@@ -1,7 +1,0 @@
-.smartboard {
-    height: 600px;
-    width: 600px;
-    border: 1px solid black;
-    overflow-y: scroll;
-    overflow-x: hidden;
-}

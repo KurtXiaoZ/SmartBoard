@@ -7,7 +7,6 @@ import { LineHor } from "../LineHor";
 import { LineVer } from "../LineVer";
 import { DataCenter } from "../../lib/DataCenter";
 import './index.css';
-import PropTypes from 'prop-types';
 
 const RESIZE_MARGIN = 10;
 const logger = new Logger();
@@ -32,6 +31,8 @@ export const ItemCore = memo(props => {
         setSelected,
         setMoving,
         handlerPositions,
+        onMouseDownItem,
+        onMouseDownResizeHanlder,
         onDragStart,
         onDrag,
         onDragEnd,
@@ -39,6 +40,7 @@ export const ItemCore = memo(props => {
         onResize,
         onResizeEnd,
         style,
+        className,
         bounds,
     } = props;
     const { left = 0, top = 0, zIndex = 0 } = itemState || {};
@@ -68,6 +70,7 @@ export const ItemCore = memo(props => {
         setMoving(true);
         setSelected(itemId);
         typeof onDragStart === 'function' && onDragStart(event, {x: left, y: top});
+        typeof onMouseDownItem === 'function' && onMouseDown(event);
     }
     const drag = (event) => {
         let newLeft = left, alignLeft = null, alignRight = null, newTop = top, alignTop = null, alignBottom = null;
@@ -185,6 +188,7 @@ export const ItemCore = memo(props => {
         setSelected(itemId);
         setResizing(true);
         typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topLeft'});
+        typeof onMouseDownResizeHanlder === 'function' && onMouseDownResizeHanlder(event, {handler: 'topLeft'});
     }
     const onResizeTopLeft = (event) => {
         let newLeft = left, alignLeft = null, newTop = top, alignTop = null;
@@ -258,6 +262,7 @@ export const ItemCore = memo(props => {
         setSelected(itemId);
         setResizing(true);
         typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topRight'});
+        typeof onMouseDownResizeHanlder === 'function' && onMouseDownResizeHanlder(event, {handler: 'topRight'});
     }
     const onResizeTopRight = (event) => {
         let handlerLeft = left + getWidth(ref), alignHandlerLeft = null, newTop = top, alignTop = null;
@@ -330,6 +335,7 @@ export const ItemCore = memo(props => {
         setSelected(itemId);
         setResizing(true);
         typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomLeft'});
+        typeof onMouseDownResizeHanlder === 'function' && onMouseDownResizeHanlder(event, {handler: 'bottomLeft'});
     }
     const onResizeBottomLeft = (event) => {
         let newLeft = left, alignLeft = null, handlerTop = top, alignHandlerTop = null;
@@ -402,6 +408,7 @@ export const ItemCore = memo(props => {
         setSelected(itemId);
         setResizing(true);
         typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
+        typeof onMouseDownResizeHanlder === 'function' && onMouseDownResizeHanlder(event, {handler: 'bottomRight'});
     }
     const onResizeBottomRight = (event) => {
         let handlerLeft = left + getWidth(ref), alignHandlerLeft = null, handlerTop = top, alignHandlerTop = null;
@@ -466,8 +473,9 @@ export const ItemCore = memo(props => {
         typeof onResizeEnd === 'function' && onResize(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
     }
     return <div
-        className="item-core"
+        className={className || "item-core"}
         style={{
+            ...style,
             left: `${left}px`,
             top: `${top}px`,
             width: `${getWidth(ref)}px`,

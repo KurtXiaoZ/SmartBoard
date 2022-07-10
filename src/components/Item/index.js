@@ -14,13 +14,16 @@ export const Item = (props) => {
         zIndex = 0,
         bounds,
         handlerPositions,
+        onMouseDownItem,
+        onMouseDownResizeHanlder,
         onDragStart,
         onDrag,
         onDragEnd,
         onResizeStart,
         onResize,
         onResizeEnd,
-        ...rest
+        style,
+        className,
     } = props;
     const { itemStates } = useContext(contexts['ItemsContext']);
     const { selected, setSelected } = useContext(contexts['SelectionContext']);
@@ -59,33 +62,57 @@ export const Item = (props) => {
             onResizeStart={onResizeStart}
             onResize={onResize}
             onResizeEnd={onResizeEnd}
-            {...rest}
+            style={style}
+            className={className}
+            onMouseDownItem={onMouseDownItem}
+            onMouseDownResizeHanlder={onMouseDownResizeHanlder}
         />
     </>
 };
 
 Item.propTypes = {
-    left: PropTypes.number,
-    top: PropTypes.number,
-    itemId: PropTypes.string.isRequired,
-    zIndex: PropTypes.number,
-    children: PropTypes.element.isRequired,
-    bounds: PropTypes.exact({
+    left: PropTypes.number, // 'left' value of the position of the item
+    top: PropTypes.number, // 'top' value of the position of the item
+    itemId: PropTypes.string.isRequired, // unique itemId for the item
+    zIndex: PropTypes.number, // zIndex of the item
+    className: PropTypes.string, // className of the item container
+    style: PropTypes.object, // style of the item container
+    bounds: PropTypes.exact({ // bounds of the item when it's being dragged or resized; if not specified, bounds equal the SmartBoard
         left: PropTypes.number,
         right: PropTypes.number,
         top: PropTypes.number,
         bottom: PropTypes.number,
     }),
-    handlerPositions: PropTypes.exact({
+    handlerPositions: PropTypes.exact({ // set the visiblity of four resize handlers
         topLeft: PropTypes.bool,
         topRight: PropTypes.bool,
         bottomLeft: PropTypes.bool,
         bottomRight: PropTypes.bool,
     }),
+    // called whenever the user mouses down on Item
+    // (event: Event) => void
+    onMouseDownItem: PropTypes.func,
+    // called whenever the user mouses down on resize handler 
+    // (event: Event, data: {handler: string}) => void
+    // handler can be topLeft || topRight || bottomLeft || bottomRight
+    onMouseDownResizeHanlder: PropTypes.func,
+    // called when dragging starts
+    // (event: Event, data: {x: number, y: number}) => void
     onDragStart: PropTypes.func,
+    // called when dragging
+    // (event: Event, data: {x: number, y: number}) => void
     onDrag: PropTypes.func,
+    // called when dragging ends
+    // (event: Event, data: {x: number, y: number}) => void
     onDragEnd: PropTypes.func,
+    // called when resizing starts
+    // (event: Event, data: {x: number, y: number, width: number, height: number, handler: string}) => void
     onResizeStart: PropTypes.func,
+    // called when resizing
+    // (event: Event, data: {x: number, y: number, width: number, height: number, handler: string}) => void
     onResize: PropTypes.func,
+    // called when resizing ends
+    // (event: Event, data: {x: number, y: number, width: number, height: number, handler: string}) => void
     onResizeEnd: PropTypes.func,
+    children: PropTypes.element.isRequired, // Item must have a single child component
 }

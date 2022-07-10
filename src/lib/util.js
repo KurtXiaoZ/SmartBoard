@@ -1,6 +1,45 @@
 import { DataCenter } from "./DataCenter";
 const dataCenter = new DataCenter();
 
+export const alignState = {
+    left: null,
+    top: null,
+    x: null,
+    y: null,
+}
+
+/**
+ * Pick some properties from an object
+ * @param {Object} obj              Original object
+ * @param {Array.<String>} props    properties to be picked
+ * @returns the picked properties
+ */
+export function pickFromObj(obj, props) {
+    if(!obj || !props || props.length === 0) return {};
+    let res = {};
+    props.forEach((prop) => {
+        if(obj[prop]) res[prop] = obj[prop];
+    });
+    return res;
+}
+
+/**
+ * Get the position of an element
+ * @param {Number} left      'x' of the element          
+ * @param {Number} top       'y' of the element
+ * @param {Number} width     width of the element
+ * @param {Number} height    height of the element
+ * @returns the position in left, right, top, bottom
+ */
+export function getPos(left, top, width, height) {
+    return {
+        left: left,
+        right: left + width,
+        top: top,
+        bottom: top + height
+    }
+}
+
 /**
  * Get offsetHeight of an element
  * @param {Object} ref      ref of the element
@@ -43,10 +82,10 @@ export function initAction(event, onMouseMove, onMouseUp, ref, left, top, itemId
  * @param {Function} onMouseUp      mouseup handler
  */
 export function cleanUpAction(onMouseMove, onMouseUp) {
-    dataCenter.initXY.x = { x: 0, y: 0 };
+    dataCenter.initXY.x = 0;
+    dataCenter.initXY.y = 0;
     dataCenter.initPos = { left: 0, right: 0, top: 0, bottom: 0 };
     dataCenter.curPos = {left: null, right: null, top: null, bottom: null, itemId: null};
-    dataCenter.alignState = {left: null, right: null, top: null, bottom: null, leftX: null, rightX: null, topY: null, bottomY: null};
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
 }
@@ -74,7 +113,7 @@ export function getBounds(bounds, boardWidth, boardHeight) {
  * @param {String} itemId           the id of the selected item 
  * @param {Function} dispatchItems  dispatcher for item states
  */
-export function spotlightItem(itemStates, itemId, dispatchItems) {
+ export function spotlightItem(itemStates, itemId, dispatchItems) {
     const { left, top, width, height, zIndex } = itemStates[itemId];
     const topLeftWithin = (curLeft, curTop, boxLeft, boxTop, boxWidth, boxHeight) => {
         return curLeft > boxLeft && curLeft < boxLeft + boxWidth && curTop > boxTop && curTop < boxTop + boxHeight;

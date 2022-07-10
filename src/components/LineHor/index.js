@@ -1,18 +1,13 @@
 import { contexts } from "../../lib/stateManagement/contexts";
 import * as React from "react";
-import { useContext, useEffect, memo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { DataCenter } from '../../lib/DataCenter';
 import './index.css';
 
 
 const dataCenter = new DataCenter();
 
-const areEqual = (prevProps, nextProps) => {
-
-    return false;
-}
-
-export const LineHor = memo(props => {
+export const LineHor = (props) => {
     const {
         top,
         itemId,
@@ -48,4 +43,4 @@ export const LineHor = memo(props => {
             top: top + 'px', 
             display: display ? "block" : "none",
         }}></div>;
-}, areEqual);
+};

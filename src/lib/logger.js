@@ -1,6 +1,5 @@
 export class Logger {
     constructor() {
-
     }
     logDragStart(itemId, left, top) {
         if(process.env.REACT_APP_LOGGER === '1') console.log(`Start dragging ${itemId} at {left: ${left}, top: ${top}}`);
