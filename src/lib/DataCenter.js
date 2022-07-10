@@ -1,3 +1,5 @@
+const ALIGN_DISTANCE = 5;
+
 export class DataCenter {
     constructor() {
         if(DataCenter.instance instanceof DataCenter) {
@@ -23,10 +25,16 @@ export class DataCenter {
         };
         this._alignState = {
             left: null,
+            right: null,
             top: null,
-            x: null,
-            y: null,
+            bottom: null,
+            leftX: null,
+            rightX: null,
+            topY: null,
+            bottomY: null,
         }
+        this._selected = "";
+        this._alignDistance = ALIGN_DISTANCE;
         Object.seal(this);
     }
     get curPos() {
@@ -52,5 +60,17 @@ export class DataCenter {
     }
     set alignState(newState) {
         this._alignState = Object.assign(this._alignState, newState);
+    }
+    get selected() {
+        return this._selected;
+    }
+    set selected(newSelected) {
+        this._selected = newSelected;
+    }
+    get alignDistance() {
+        return this._alignDistance;
+    }
+    set alignDistance(newDistance) {
+        this._alignDistance = newDistance;
     }
 }

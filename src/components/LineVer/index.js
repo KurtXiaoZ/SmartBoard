@@ -1,49 +1,45 @@
-import { connectToContext } from '../../lib/stateManagement/contexts';
-import { contexts } from "../../lib/stateManagement/contexts";
 import * as React from "react";
-import { useContext, useEffect, useReducer, memo, cloneElement, useState, useRef } from "react";
+import { useEffect, memo, useState, useContext } from "react";
 import './index.css';
 import { DataCenter } from '../../lib/DataCenter';
+import { contexts } from "../../lib/stateManagement/contexts";
 
 
 const dataCenter = new DataCenter();
-
-/**
- * Set custom props for performance optimization with React.memo
- * @returns {Object} props for Item
- */
- const useCustomProps = () => {
-    const curPosProps = useContext(contexts['CurPosContext']);
-    const alignProps = useContext(contexts['AlignContext']);
-    return {
-        ...curPosProps, 
-        ...alignProps,
-    };
-}
 
 const areEqual = (prevProps, nextProps) => {
 
     return false;
 }
 
-export const LineVer = connectToContext(memo(props => {
+export const LineVer = memo(props => {
     const {
         left,
-        alignDistance,
         itemId,
-        dispatchAlign,
     } = props;
     
     const [display, setDisplay] = useState(false);
+    const { moving } = useContext(contexts['MovementContext']);
     useEffect(() => {
-        if(itemId !== dataCenter.curPos.itemId && (Math.abs(left - dataCenter.curPos.left || 0) < alignDistance || Math.abs(left - dataCenter.curPos.right || 0) < alignDistance)) {
-            dataCenter.alignState.left = left;
-            setDisplay(true);
+        if(dataCenter.alignDistance === 0) {
+            setDisplay(false);
+            dataCenter.alignState = {left: null, right: null, top: null, bottom: null, leftX: null, rightX: null, topY: null, bottomY: null};
         }
         else {
-            setDisplay(false);
+            if(itemId !== dataCenter.curPos.itemId && Math.abs(left - dataCenter.curPos.left || 0) < dataCenter.alignDistance) {
+                dataCenter.alignState.left = left;
+                setDisplay(true);
+            }
+            else if(itemId !== dataCenter.curPos.itemId && Math.abs(left - dataCenter.curPos.right || 0) < dataCenter.alignDistance) {
+                dataCenter.alignState.right = left;
+                setDisplay(true);
+            }
+            else setDisplay(false);
         }
     }, [dataCenter.curPos.left, dataCenter.curPos.right]);
+    useEffect(() => {
+        if(!moving) setDisplay(false);
+    }, [moving]);
 
     return <div className='canvas-component-line-ver' style={{left: left + 'px', display: display ? "block" : "none"}}></div>;
-}, areEqual), useCustomProps);
+}, areEqual);

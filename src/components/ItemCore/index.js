@@ -1,65 +1,87 @@
 import * as React from "react";
-import { useContext, useEffect, useReducer, memo, cloneElement, useState, useRef } from "react";
+import { useEffect, memo, cloneElement, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import Draggable from "react-draggable";
-import { contexts } from "../../lib/stateManagement/contexts";
-import { connectToContext } from "../../lib/stateManagement/contexts";
-import { getHeight, getWidth, getPos, initAction, cleanUpAction, getBounds } from "../../lib/util";
+import { getHeight, getWidth, initAction, cleanUpAction, spotlightItem } from "../../lib/util";
 import { Logger } from "../../lib/logger";
 import { LineHor } from "../LineHor";
 import { LineVer } from "../LineVer";
 import { DataCenter } from "../../lib/DataCenter";
 import './index.css';
+import PropTypes from 'prop-types';
 
 const RESIZE_MARGIN = 10;
-export const ALIGN_DISTANCE = 15;
 const logger = new Logger();
 const dataCenter = new DataCenter();
 
 const areEqual = (prevProps, nextProps) => {
-    return false;
+    // another item is moving
+    if(dataCenter.curPos.itemId !== null && dataCenter.curPos.itemId !== prevProps.itemId) {
+        if(prevProps.selected !== nextProps.selected) return false;
+        return true;
+    }
 }
 
 export const ItemCore = memo(props => {
     const {
         children,
-        width,
-        height,
         itemId,
         itemState,
+        itemStates,
         dispatchItems,
+        selected,
+        setSelected,
+        setMoving,
+        handlerPositions,
+        onDragStart,
+        onDrag,
+        onDragEnd,
+        onResizeStart,
+        onResize,
+        onResizeEnd,
         style,
         bounds,
-        align = ALIGN_DISTANCE,
-        dispatchAlign,
-        resizeLocation,
     } = props;
-    const { left = 0, top = 0 } = itemState || {};
-    const smartboard = document.getElementById('smart-board');
-    const boardWidth = smartboard?.clientWidth || 0, boardHeight = smartboard?.clientHeight || 0;
-    const { leftBound, rightBound, topBound, bottomBound } = getBounds(bounds, boardWidth, boardHeight);
-    const alignDistance = (align < 0 || align > 30) ? ALIGN_DISTANCE : align;
+    const { left = 0, top = 0, zIndex = 0 } = itemState || {};
     const ref = useRef(null);
+    const [resizing, setResizing] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const shouldDisplay = (hovered && selected === "") || selected === itemId;
+    const smartboard = document.getElementById('smart-board');
+    const { leftBound, rightBound, topBound, bottomBound } = bounds;
+
+    useEffect(() => {
+        dispatchItems({type: 'setItemWidth', payload: { itemId, width: getWidth(ref)}});
+    }, [getWidth(ref)]);
+    useEffect(() => {
+        dispatchItems({type: 'setItemHeight', payload: { itemId, height: getHeight(ref)}});
+    }, [getHeight(ref)]);
 
     // drag
-    const onDragStart = (event) => {
+    const dragStart = (event) => {
+        event.stopPropagation();
+        // initialize drag
         logger.logDragStart(itemId, left, top);
-        initAction(event, onDrag, onDragEnd, ref, left, top);
+        initAction(event, drag, dragEnd, ref, left, top, itemId);
+        // spotlight item
+        spotlightItem(itemStates, itemId, dispatchItems);
+        // set moving flag
+        setMoving(true);
+        setSelected(itemId);
+        typeof onDragStart === 'function' && onDragStart(event, {x: left, y: top});
     }
-    const onDrag = (event) => {
-        let newLeft = left, alignLeft = null;
+    const drag = (event) => {
+        let newLeft = left, alignLeft = null, alignRight = null, newTop = top, alignTop = null, alignBottom = null;
         if(dataCenter.alignState.left !== null) {
-            if(alignLeft === null) alignLeft = (Math.abs(dataCenter.curPos.left - dataCenter.alignState.left) < Math.abs(dataCenter.curPos.right - dataCenter.alignState.left)) ? dataCenter.alignState.left : dataCenter.alignState.left - getWidth(ref);
-            if(dataCenter.alignState.x === null) {
-                dataCenter.alignState.x = event.clientX;
-                if(alignLeft < 0) alignLeft = 0;
+            if(alignLeft === null) alignLeft = dataCenter.alignState.left;
+            if(dataCenter.alignState.leftX === null) {
+                dataCenter.alignState.leftX = event.clientX;
                 newLeft = alignLeft;
             }
             else {
-                if(Math.abs(event.clientX - dataCenter.alignState.x) > alignDistance) {
-                    newLeft = alignLeft + event.clientX - dataCenter.alignState.x;
+                if(Math.abs(event.clientX - dataCenter.alignState.leftX) > dataCenter.alignDistance) {
+                    newLeft = alignLeft + event.clientX - dataCenter.alignState.leftX;
                     dataCenter.alignState.left = null;
-                    dataCenter.alignState.x = null;
+                    dataCenter.alignState.leftX = null;
                     alignLeft = null;
                 }
                 else {
@@ -69,113 +91,379 @@ export const ItemCore = memo(props => {
         }
         else {
             newLeft = dataCenter.initPos.left + event.clientX - dataCenter.initXY.x;
-            if(newLeft < leftBound) newLeft = leftBound;
-            if(newLeft + getWidth(ref) > rightBound) newLeft = rightBound - getWidth(ref);
         }
-        let newTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+        if(dataCenter.alignState.left === null) {
+            if(dataCenter.alignState.right !== null) {
+                if(alignRight === null) alignRight = dataCenter.alignState.right;
+                if(dataCenter.alignState.rightX === null) {
+                    dataCenter.alignState.rightX = event.clientX;
+                    newLeft = alignRight - getWidth(ref);
+                }
+                else {
+                    if(Math.abs(event.clientX - dataCenter.alignState.rightX) > dataCenter.alignDistance) {
+                        newLeft = alignRight - getWidth(ref) + event.clientX - dataCenter.alignState.rightX;
+                        dataCenter.alignState.right = null;
+                        dataCenter.alignState.rightX = null;
+                        alignRight = null;
+                    }
+                    else {
+                        newLeft = alignRight - getWidth(ref);
+                    }
+                }
+            }
+            else {
+                newLeft = dataCenter.initPos.left + event.clientX - dataCenter.initXY.x;
+            }
+        }
+        if(dataCenter.alignState.top !== null) {
+            if(alignTop === null) alignTop = dataCenter.alignState.top;
+            if(dataCenter.alignState.topY === null) {
+                dataCenter.alignState.topY = event.clientY;
+                newTop = alignTop;
+            }
+            else {
+                if(Math.abs(event.clientY - dataCenter.alignState.topY) > dataCenter.alignDistance) {
+                    newTop = alignTop + event.clientY - dataCenter.alignState.topY;
+                    dataCenter.alignState.top = null;
+                    dataCenter.alignState.topY = null;
+                    alignTop = null;
+                }
+                else {
+                    newTop = alignTop;
+                }
+            }
+        }
+        else {
+            newTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+        }
+        if(dataCenter.alignState.top === null) {
+            if(dataCenter.alignState.bottom !== null) {
+                if(alignBottom === null) alignBottom = dataCenter.alignState.bottom;
+                if(dataCenter.alignState.bottomY === null) {
+                    dataCenter.alignState.bottomY = event.clientY;
+                    newTop = alignBottom - getHeight(ref);
+                }
+                else {
+                    if(Math.abs(event.clientY - dataCenter.alignState.bottomY) > dataCenter.alignDistance) {
+                        newTop = alignBottom - getHeight(ref) + event.clientY - dataCenter.alignState.bottomY;
+                        dataCenter.alignState.bottom = null;
+                        dataCenter.alignState.bottomY = null;
+                        alignBottom = null;
+                    }
+                    else {
+                        newTop = alignBottom - getHeight(ref);
+                    }
+                }
+            }
+            else {
+                newTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+            }
+        }
+        if(newLeft < leftBound) newLeft = leftBound;
+        else if(newLeft + getWidth(ref) > rightBound) newLeft = rightBound - getWidth(ref);
         if(newTop < topBound) newTop = topBound;
-        if(newTop + getHeight(ref) > bottomBound) newTop = bottomBound - getHeight(ref);
+        else if(newTop + getHeight(ref) > bottomBound) newTop = bottomBound - getHeight(ref);
         logger.logDragging(itemId, newLeft, newTop);
         dispatchItems({type: 'setItemLeft', payload: {itemId, left: newLeft}});
         dispatchItems({type: 'setItemTop', payload: {itemId, top: newTop}});
-        dataCenter.curPos = {left: newLeft, right: newLeft + getWidth(ref), top: newTop, bottom: newTop + getHeight(ref), itemId};
+        dataCenter.curPos = {left: newLeft, right: newLeft + getWidth(ref), top: newTop, bottom: newTop + getHeight(ref), itemId: itemId};
+        typeof onDrag === 'function' && onDrag(event, {x: newLeft, y: newTop});
     }
-    const onDragEnd = (event) => {
+    const dragEnd = (event) => {
         logger.logDragEnd(itemId, left, top);
-        cleanUpAction(onDrag, onDragEnd);
+        cleanUpAction(drag, dragEnd);
+        setMoving(false);
+        setResizing(false);
+        typeof onDragEnd === 'function' && onDragEnd(event, {x: left, y: top});
     }
     // resize top left
     const onResizeStartTopLeft = (event) => {
         logger.logResizeStart(itemId, left, top, getWidth(ref), getHeight(ref), 'topLeft');
         event.stopPropagation();
-        initAction(event, onResizeTopLeft, onResizeEndTopLeft, ref, left, top);
+        initAction(event, onResizeTopLeft, onResizeEndTopLeft, ref, left, top, itemId);
+        setMoving(true);
+        setSelected(itemId);
+        setResizing(true);
+        typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topLeft'});
     }
     const onResizeTopLeft = (event) => {
-        let newLeft = left + event.clientX - dataCenter.initXY.x;
-        let newTop = top + event.clientY - dataCenter.initXY.y;
+        let newLeft = left, alignLeft = null, newTop = top, alignTop = null;
+        if(dataCenter.alignState.left !== null) {
+            alignLeft = dataCenter.alignState.left;
+            if(dataCenter.alignState.leftX === null) {
+                dataCenter.alignState.leftX = event.clientX;
+                newLeft = alignLeft;
+            }
+            else {
+                if(Math.abs(event.clientX - dataCenter.alignState.leftX) > dataCenter.alignDistance) {
+                    newLeft = alignLeft + event.clientX - dataCenter.alignState.leftX;
+                    dataCenter.alignState.left = null;
+                    dataCenter.alignState.leftX = null;
+                    alignLeft = null;
+                }
+                else {
+                    newLeft = alignLeft;
+                }
+            }
+        }
+        else {
+            newLeft = dataCenter.initPos.left + event.clientX - dataCenter.initXY.x;
+        }
+        if(dataCenter.alignState.top !== null) {
+            alignTop = dataCenter.alignState.top;
+            if(dataCenter.alignState.topY === null) {
+                dataCenter.alignState.topY = event.clientY;
+                newTop = alignTop;
+            }
+            else {
+                if(Math.abs(event.clientY - dataCenter.alignState.topY) > dataCenter.alignDistance) {
+                    newTop = alignTop + event.clientY - dataCenter.alignState.topY;
+                    dataCenter.alignState.top = null;
+                    dataCenter.alignState.topY = null;
+                    alignTop = null;
+                }
+                else {
+                    newTop = alignTop;
+                }
+            }
+        }
+        else {
+            newTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+        }
         if(newLeft < leftBound) newLeft = leftBound;
-        if(newLeft + RESIZE_MARGIN > dataCenter.initPos.right) newLeft = dataCenter.initPos.right - RESIZE_MARGIN;
+        else if(newLeft + dataCenter.alignDistance > dataCenter.initPos.right) newLeft = dataCenter.initPos.right - dataCenter.alignDistance;
         if(newTop < topBound) newTop = topBound;
-        if(newTop + RESIZE_MARGIN > dataCenter.initPos.bottom) newTop = dataCenter.initPos.bottom - RESIZE_MARGIN;
+        else if(newTop + dataCenter.alignDistance > dataCenter.initPos.bottom) newTop = dataCenter.initPos.bottom - dataCenter.alignDistance;
         ref.current.style.width = dataCenter.initPos.right - newLeft + 'px';
         ref.current.style.height = dataCenter.initPos.bottom - newTop + 'px';
         logger.logResize(itemId, newLeft, newTop, getWidth(ref), getHeight(ref), 'topLeft');
         dispatchItems({type: 'setItemLeft', payload: {itemId, left: newLeft}});
         dispatchItems({type: 'setItemTop', payload: {itemId, top: newTop}});
         dataCenter.curPos = {left: newLeft, right: newLeft + getWidth(ref), top: newTop, bottom: newTop + getHeight(ref), itemId};
+        typeof onResize === 'function' && onResize(event, {x: newLeft, y: newTop, width: getWidth(ref), height: getHeight(ref), handler: 'topLeft'});
     }
     const onResizeEndTopLeft = (event) => {
         logger.logResizeEnd(itemId, left, top, getWidth(ref), getHeight(ref), 'topLeft');
         cleanUpAction(onResizeTopLeft, onResizeEndTopLeft);
+        setMoving(false);
+        setResizing(false);
+        typeof onResizeEnd === 'function' && onResizeEnd(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topLeft'});
     }
     // resize top right
     const onResizeStartTopRight = (event) => {
         logger.logResizeStart(itemId, left, top, getWidth(ref), getHeight(ref), 'topRight');
         event.stopPropagation();
-        initAction(event, onResizeTopRight, onResizeEndTopRight, ref, left, top);
+        initAction(event, onResizeTopRight, onResizeEndTopRight, ref, left, top, itemId);
+        setMoving(true);
+        setSelected(itemId);
+        setResizing(true);
+        typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topRight'});
     }
     const onResizeTopRight = (event) => {
-        let handlerLeft = dataCenter.initPos.right + event.clientX - dataCenter.initXY.x;
-        let newTop = top + event.clientY - dataCenter.initXY.y;
+        let handlerLeft = left + getWidth(ref), alignHandlerLeft = null, newTop = top, alignTop = null;
+        if(dataCenter.alignState.right !== null) {
+            alignHandlerLeft = dataCenter.alignState.right;
+            if(dataCenter.alignState.rightX === null) {
+                dataCenter.alignState.rightX = event.clientX;
+                handlerLeft = alignHandlerLeft;
+            }
+            else {
+                if(Math.abs(event.clientX - dataCenter.alignState.rightX) > dataCenter.alignDistance) {
+                    handlerLeft = alignHandlerLeft + event.clientX - dataCenter.alignState.rightX;
+                    dataCenter.alignState.right = null;
+                    dataCenter.alignState.rightX = null;
+                    alignHandlerLeft = null;
+                }
+                else {
+                    handlerLeft = alignHandlerLeft;
+                }
+            }
+        }
+        else {
+            handlerLeft = dataCenter.initPos.right + event.clientX - dataCenter.initXY.x;
+        }
+        if(dataCenter.alignState.top !== null) {
+            alignTop = dataCenter.alignState.top;
+            if(dataCenter.alignState.topY === null) {
+                dataCenter.alignState.topY = event.clientY;
+                newTop = alignTop;
+            }
+            else {
+                if(Math.abs(event.clientY - dataCenter.alignState.topY) > dataCenter.alignDistance) {
+                    newTop = alignTop + event.clientY - dataCenter.alignState.topY;
+                    dataCenter.alignState.top = null;
+                    dataCenter.alignState.topY = null;
+                    alignTop = null;
+                }
+                else {
+                    newTop = alignTop;
+                }
+            }
+        }
+        else {
+            newTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+        }
         if(handlerLeft - RESIZE_MARGIN < dataCenter.initPos.left) handlerLeft = dataCenter.initPos.left + RESIZE_MARGIN;
-        if(handlerLeft > rightBound) handlerLeft = rightBound;
+        else if(handlerLeft > rightBound) handlerLeft = rightBound;
         if(newTop < topBound) newTop = topBound;
-        if(newTop + RESIZE_MARGIN > dataCenter.initPos.bottom) newTop = dataCenter.initPos.bottom - RESIZE_MARGIN;
+        else if(newTop + dataCenter.alignDistance > dataCenter.initPos.bottom) newTop = dataCenter.initPos.bottom - dataCenter.alignDistance;
         ref.current.style.width = handlerLeft - dataCenter.initPos.left + 'px';
         ref.current.style.height = dataCenter.initPos.bottom - newTop + 'px';
         logger.logResize(itemId, left, newTop, getWidth(ref), getHeight(ref), 'topRight');
         dispatchItems({type: 'setItemTop', payload: {itemId, top: newTop}});
         dataCenter.curPos = {left: left, right: left + getWidth(ref), top: newTop, bottom: newTop + getHeight(ref), itemId};
+        typeof onResize === 'function' && onResize(event, {x: left, y: newTop, width: getWidth(ref), height: getHeight(ref), handler: 'topRight'});
     }
     const onResizeEndTopRight = (event) => {
         logger.logResizeEnd(itemId, left, top, getWidth(ref), getHeight(ref), 'topRight');
         cleanUpAction(onResizeTopRight, onResizeEndTopRight);
+        setMoving(false);
+        setResizing(false);
+        typeof onResizeEnd === 'function' && onResizeEnd(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'topRight'});
     }
     // resize bottom left
     const onResizeStartBottomLeft = (event) => {
         logger.logResizeStart(itemId, left, top, getWidth(ref), getHeight(ref), 'bottomLeft');
         event.stopPropagation();
-        initAction(event, onResizeBottomLeft, onResizeEndBottomLeft, ref, left, top);
+        initAction(event, onResizeBottomLeft, onResizeEndBottomLeft, ref, left, top, itemId);
+        setMoving(true);
+        setSelected(itemId);
+        setResizing(true);
+        typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomLeft'});
     }
     const onResizeBottomLeft = (event) => {
-        let newLeft = left + event.clientX - dataCenter.initXY.x;
-        let handlerTop = dataCenter.initPos.top + event.clientY - dataCenter.initXY.y;
+        let newLeft = left, alignLeft = null, handlerTop = top, alignHandlerTop = null;
+        if(dataCenter.alignState.left !== null) {
+            if(alignLeft === null) alignLeft = (Math.abs(dataCenter.curPos.left - dataCenter.alignState.left) < Math.abs(dataCenter.curPos.right - dataCenter.alignState.left)) ? dataCenter.alignState.left : dataCenter.alignState.left - getWidth(ref);
+            if(dataCenter.alignState.leftX === null) {
+                dataCenter.alignState.leftX = event.clientX;
+                newLeft = alignLeft;
+            }
+            else {
+                if(Math.abs(event.clientX - dataCenter.alignState.leftX) > dataCenter.alignDistance) {
+                    newLeft = alignLeft + event.clientX - dataCenter.alignState.leftX;
+                    dataCenter.alignState.left = null;
+                    dataCenter.alignState.leftX = null;
+                    alignLeft = null;
+                }
+                else {
+                    newLeft = alignLeft;
+                }
+            }
+        }
+        else {
+            newLeft = dataCenter.initPos.left + event.clientX - dataCenter.initXY.x;
+        }
+        if(dataCenter.alignState.bottom !== null) {
+            alignHandlerTop = dataCenter.alignState.bottom;
+            if(dataCenter.alignState.bottomY === null) {
+                dataCenter.alignState.bottomY = event.clientY;
+                handlerTop = alignHandlerTop;
+            }
+            else {
+                if(Math.abs(event.clientY - dataCenter.alignState.bottomY) > dataCenter.alignDistance) {
+                    handlerTop = alignHandlerTop + event.clientY - dataCenter.alignState.bottomY;
+                    dataCenter.alignState.bottom = null;
+                    dataCenter.alignState.bottomY = null;
+                    alignHandlerTop = null;
+                }
+                else {
+                    handlerTop = alignHandlerTop;
+                }
+            }
+        }
+        else {
+            handlerTop = dataCenter.initPos.bottom + event.clientY - dataCenter.initXY.y;
+        }
         if(newLeft < leftBound) newLeft = leftBound;
-        if(newLeft + RESIZE_MARGIN > dataCenter.initPos.right) newLeft = dataCenter.initPos.right - RESIZE_MARGIN;
+        else if(newLeft + dataCenter.alignDistance > dataCenter.initPos.right) newLeft = dataCenter.initPos.right - dataCenter.alignDistance;
         if(handlerTop - RESIZE_MARGIN < dataCenter.initPos.top) handlerTop = dataCenter.initPos.top + RESIZE_MARGIN;
-        if(handlerTop > bottomBound) handlerTop = bottomBound;
+        else if(handlerTop > bottomBound) handlerTop = bottomBound;
         ref.current.style.width = dataCenter.initPos.right - newLeft + 'px';
         ref.current.style.height = handlerTop - dataCenter.initPos.top + 'px';
         logger.logResize(itemId, newLeft, top, getWidth(ref), getHeight(ref), 'bottomLeft');
         dispatchItems({type: 'setItemLeft', payload: {itemId, left: newLeft}});
         dataCenter.curPos = {left: newLeft, right: newLeft + getWidth(ref), top: top, bottom: top + getHeight(ref), itemId};
+        typeof onResize === 'function' && onResize(event, {x: newLeft, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomLeft'});
     }
     const onResizeEndBottomLeft = (event) => {
         logger.logResizeEnd(itemId, left, top, getWidth(ref), getHeight(ref), 'bottom');
         cleanUpAction(onResizeBottomLeft, onResizeEndBottomLeft);
+        setMoving(false);
+        setResizing(false);
+        typeof onResizeEnd === 'function' && onResizeEnd(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomLeft'});
     }
     // resize bottom right
     const onResizeStartBottomRight = (event) => {
         logger.logResizeStart(itemId, left, top, getWidth(ref), getHeight(ref), 'bottomRight');
         event.stopPropagation();
-        initAction(event, onResizeBottomRight, onResizeEndBottomRight, ref, left, top);
+        initAction(event, onResizeBottomRight, onResizeEndBottomRight, ref, left, top, itemId);
+        setMoving(true);
+        setSelected(itemId);
+        setResizing(true);
+        typeof onResizeStart === 'function' && onResizeStart(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
     }
     const onResizeBottomRight = (event) => {
-        let handlerLeft = dataCenter.initPos.right + event.clientX - dataCenter.initXY.x;
-        let handlerTop = dataCenter.initPos.bottom + event.clientY - dataCenter.initXY.y;
+        let handlerLeft = left + getWidth(ref), alignHandlerLeft = null, handlerTop = top, alignHandlerTop = null;
+        if(dataCenter.alignState.right !== null) {
+            alignHandlerLeft = dataCenter.alignState.right;
+            if(dataCenter.alignState.rightX === null) {
+                dataCenter.alignState.rightX = event.clientX;
+                handlerLeft = alignHandlerLeft;
+            }
+            else {
+                if(Math.abs(event.clientX - dataCenter.alignState.rightX) > dataCenter.alignDistance) {
+                    handlerLeft = alignHandlerLeft + event.clientX - dataCenter.alignState.rightX;
+                    dataCenter.alignState.right = null;
+                    dataCenter.alignState.rightX = null;
+                    alignHandlerLeft = null;
+                }
+                else {
+                    handlerLeft = alignHandlerLeft;
+                }
+            }
+        }
+        else {
+            handlerLeft = dataCenter.initPos.right + event.clientX - dataCenter.initXY.x;
+        }
+        if(dataCenter.alignState.bottom !== null) {
+            alignHandlerTop = dataCenter.alignState.bottom;
+            if(dataCenter.alignState.bottomY === null) {
+                dataCenter.alignState.bottomY = event.clientY;
+                handlerTop = alignHandlerTop;
+            }
+            else {
+                if(Math.abs(event.clientY - dataCenter.alignState.bottomY) > dataCenter.alignDistance) {
+                    handlerTop = alignHandlerTop + event.clientY - dataCenter.alignState.bottomY;
+                    dataCenter.alignState.bottom = null;
+                    dataCenter.alignState.bottomY = null;
+                    alignHandlerTop = null;
+                }
+                else {
+                    handlerTop = alignHandlerTop;
+                }
+            }
+        }
+        else {
+            handlerTop = dataCenter.initPos.bottom + event.clientY - dataCenter.initXY.y;
+        }
         if(handlerLeft - RESIZE_MARGIN < dataCenter.initPos.left) handlerLeft = dataCenter.initPos.left + RESIZE_MARGIN;
-        if(handlerLeft > rightBound) handlerLeft = rightBound;
+        else if(handlerLeft > rightBound) handlerLeft = rightBound;
         if(handlerTop - RESIZE_MARGIN < dataCenter.initPos.top) handlerTop = dataCenter.initPos.top + RESIZE_MARGIN;
-        if(handlerTop > bottomBound) handlerTop = bottomBound;
+        else if(handlerTop > bottomBound) handlerTop = bottomBound;
         ref.current.style.width = handlerLeft - dataCenter.initPos.left + 'px';
         ref.current.style.height = handlerTop - dataCenter.initPos.top + 'px';
         logger.logResize(itemId, left, top, getWidth(ref), getHeight(ref), 'bottomRight');
         dispatchItems({type: 'setItemLeft', payload: {itemId, left: left}});
         dataCenter.curPos = {left: left, right: left + getWidth(ref), top: top, bottom: top + getHeight(ref), itemId};
+        typeof onResize === 'function' && onResize(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
     }
     const onResizeEndBottomRight = (event) => {
         logger.logResizeEnd(itemId, left, top, getWidth(ref), getHeight(ref), 'bottomRight');
         cleanUpAction(onResizeBottomRight, onResizeEndBottomRight);
+        setMoving(false);
+        setResizing(false);
+        typeof onResizeEnd === 'function' && onResize(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
     }
     return <div
         className="item-core"
@@ -184,36 +472,51 @@ export const ItemCore = memo(props => {
             top: `${top}px`,
             width: `${getWidth(ref)}px`,
             height: `${getHeight(ref)}px`,
-            ...style
+            border: shouldDisplay ? '1px solid #2680eb' : '',
+            zIndex,
         }}
-        onMouseDown={onDragStart}
+        onMouseDown={dragStart}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
     >
         {cloneElement(React.Children.only(children), {
-            ref: ref
-            /*className: className,
-            style: {...children.props.style, ...style},
-            transform: svgTransform*/
+            ref: ref,
         })}
-        <div 
+        {(!handlerPositions || handlerPositions?.topLeft) && <div 
             className="resize-handler-component top-left"
             onMouseDown={onResizeStartTopLeft}
-        ></div>
-        <div 
+            style={{
+                display: shouldDisplay ? 'block' : 'none',
+                backgroundColor: resizing && '#2680eb'
+            }}
+        ></div>}
+        {(!handlerPositions || handlerPositions?.topRight) && <div 
             className="resize-handler-component top-right"
             onMouseDown={onResizeStartTopRight}
-        ></div>
-        <div 
+            style={{
+                display: shouldDisplay ? 'block' : 'none',
+                backgroundColor: resizing && '#2680eb'
+            }}
+        ></div>}
+        {(!handlerPositions || handlerPositions?.bottomLeft) && <div 
             className="resize-handler-component bottom-left"
             onMouseDown={onResizeStartBottomLeft}
-        ></div>
-        <div 
+            style={{
+                display: shouldDisplay ? 'block' : 'none',
+                backgroundColor: resizing && '#2680eb'
+            }}
+        ></div>}
+        {(!handlerPositions || handlerPositions?.bottomRight) && <div 
             className="resize-handler-component bottom-right"
             onMouseDown={onResizeStartBottomRight}
-        ></div>
-        {smartboard && createPortal(<LineHor top={top} alignDistance={alignDistance} itemId={itemId}/>, smartboard)}
-        {smartboard && createPortal(<LineHor top={top + getHeight(ref)} alignDistance={alignDistance} itemId={itemId}/>, smartboard)}
-        {smartboard && createPortal(<LineVer left={left} alignDistance={alignDistance} itemId={itemId}/>, smartboard)}
-        {smartboard && createPortal(<LineVer left={left + getWidth(ref)} alignDistance={alignDistance} itemId={itemId}/>, smartboard)}
+            style={{
+                display: shouldDisplay ? 'block' : 'none',
+                backgroundColor: resizing && '#2680eb'
+            }}
+        ></div>}
+        {smartboard && createPortal(<LineHor top={top} itemId={itemId}/>, smartboard)}
+        {smartboard && createPortal(<LineHor top={top + getHeight(ref)} itemId={itemId}/>, smartboard)}
+        {smartboard && createPortal(<LineVer left={left} itemId={itemId}/>, smartboard)}
+        {smartboard && createPortal(<LineVer left={left + getWidth(ref)} itemId={itemId}/>, smartboard)}
     </div>
-        
 }, areEqual);

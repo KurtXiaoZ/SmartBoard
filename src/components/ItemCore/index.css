@@ -1,3 +1,8 @@
+.item-core {
+    position: absolute;
+    user-select: none;
+}
+
 .resize-handler-component {
     background-color: transparent;
     width: 6px;
@@ -39,13 +44,4 @@
 
 .resize-handler-dragging {
     background-color: #2680eb;
-}
-
-.smart-board-item {
-    position: relative;
-    z-index: 10;
-}
-
-.item-core {
-    position: absolute;
 }

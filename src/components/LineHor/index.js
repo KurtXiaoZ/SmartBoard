@@ -1,44 +1,46 @@
-import { connectToContext } from '../../lib/stateManagement/contexts';
 import { contexts } from "../../lib/stateManagement/contexts";
 import * as React from "react";
-import { useContext, useEffect, useReducer, memo, cloneElement, useState, useRef } from "react";
+import { useContext, useEffect, memo, useState } from "react";
 import { DataCenter } from '../../lib/DataCenter';
 import './index.css';
 
 
 const dataCenter = new DataCenter();
 
-/**
- * Set custom props for performance optimization with React.memo
- * @returns {Object} props for Item
- */
- const useCustomProps = () => {
-    const curPosProps = useContext(contexts['CurPosContext']);
-    return { 
-        ...curPosProps, 
-    };
-}
-
 const areEqual = (prevProps, nextProps) => {
 
     return false;
 }
 
-export const LineHor = connectToContext(memo(props => {
+export const LineHor = memo(props => {
     const {
         top,
-        alignDistance,
         itemId,
     } = props;
     const [display, setDisplay] = useState(false);
+    const { moving } = useContext(contexts['MovementContext']);
     useEffect(() => {
-        if(itemId !== dataCenter.curPos.itemId && (Math.abs(top - dataCenter.curPos.top) < alignDistance || Math.abs(top - dataCenter.curPos.bottom) < alignDistance)) {
-            setDisplay(true);
+        if(dataCenter.alignDistance === 0) {
+            setDisplay(false);
+            dataCenter.alignState = {left: null, right: null, top: null, bottom: null, leftX: null, rightX: null, topY: null, bottomY: null};
         }
         else {
-            setDisplay(false);
+            if(itemId !== dataCenter.curPos.itemId && Math.abs(top - dataCenter.curPos.top) < dataCenter.alignDistance) {
+                dataCenter.alignState.top = top;
+                setDisplay(true);
+            }
+            else if(itemId !== dataCenter.curPos.itemId && Math.abs(top - dataCenter.curPos.bottom) < dataCenter.alignDistance) {
+                dataCenter.alignState.bottom = top;
+                setDisplay(true);
+            }
+            else {
+                setDisplay(false);
+            }
         }
     }, [dataCenter.curPos.top, dataCenter.curPos.bottom]);
+    useEffect(() => {
+        if(!moving) setDisplay(false);
+    }, [moving]);
 
     return <div 
         className='line-hor' 
@@ -46,4 +48,4 @@ export const LineHor = connectToContext(memo(props => {
             top: top + 'px', 
             display: display ? "block" : "none",
         }}></div>;
-}, areEqual), useCustomProps);
+}, areEqual);

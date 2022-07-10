@@ -2,10 +2,9 @@ import { createContext, useContext } from "react";
 
 // An object that contains all contexts for state management
 export const contexts = {
-    CurPosContext: createContext(),
-    MovementContext: createContext(),
-    ItemsContext: createContext(),
-    AlignContext: createContext(),
+  ItemsContext: createContext(),
+  MovementContext: createContext(),
+  SelectionContext: createContext(),
 }
 
 /**
@@ -15,8 +14,8 @@ export const contexts = {
  * @returns { Object }  React               component with custom props
  */
 export function connectToContext(WrappedComponent, getProps){
-    return function(props){
-      const contextProps = getProps();
-      return <WrappedComponent {...contextProps} {...props}/>
-    }
+  return function(props){
+    const contextProps = getProps();
+    return <WrappedComponent {...contextProps} {...props}/>
+  }
 }
