@@ -1,70 +1,126 @@
-# Getting Started with Create React App
+# SmartBoard Reusable Component
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React Component for building a low-code platform
+```js
+<SmartBoard>
+    <Item>
+        <div>smartboard</div>
+    </Item>
+</SmartBoard>
+```
 
-## Available Scripts
+[Demo](http://react-grid-layout.github.io/react-draggable/example/)
 
-In the project directory, you can run:
+### Installing
+```
+git clone with SSH: git clone git@github.com:KurtXiaoZ/SmartBoard.git
+git clone with HTTPS: git clone https://github.com/KurtXiaoZ/SmartBoard.git
+```
 
-### `npm start`
+### Exports
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```js
+import { SmartBoard, Item } from '<relative path>/SmartBoard'
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## `<SmartBoard>`
+A `<SmartBoard>` component provides a canvas for the platform. `<Item>` components within `<SmartBoard>` can be dragged and resized.
 
-### `npm test`
+`<SmartBoard>` is essentially a `<div>` with `position: relative`. 
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### `<SmartBoard>` props:
+```js
+className: PropTypes.string, // class name of the SmartBoard component; targets <div>
 
-### `npm run build`
+style: PropTypes.object, // style of the SmartBoard component; CSS position applied will be over written
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+autoAlignDistance: PropTypes.number, // custom distance for auto-alignment of <Item> withinSmartBoard
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## `<Item>`
+A `<Item>` component wraps your custom component and makes it draggable and resizable.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+`<Item>` must be placed within `<SmartBoard>`.
 
-### `npm run eject`
+`<Item>` must only have one child.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+`<Item>` essentially wraps your component with a `<div>` with `position: absolute`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### `<Item>` props:
+```js
+// 'left' value of the position of the item
+left: PropTypes.number,
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+// 'top' value of the position of the item
+top: PropTypes.number,
 
-## Learn More
+// unique itemId for the item
+itemId: PropTypes.string.isRequired,
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+// zIndex of the item
+zIndex: PropTypes.number,
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+// className of the item container
+className: PropTypes.string,
 
-### Code Splitting
+// style of the item container
+// position, left, top, width, height, border, zIndex are overwritten
+// these styles can be set on the child component of <Item>
+style: PropTypes.object,
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+// bounds of the item when it's being dragged orresized; if not specified, bounds equal the SmartBoard
+bounds: PropTypes.exact({
+    left: PropTypes.number,
+    right: PropTypes.number,
+    top: PropTypes.number,
+    bottom: PropTypes.number,
+}),
 
-### Analyzing the Bundle Size
+// set the visiblity of four resize handlers
+handlerPositions: PropTypes.exact({
+    topLeft: PropTypes.bool,
+    topRight: PropTypes.bool,
+    bottomLeft: PropTypes.bool,
+    bottomRight: PropTypes.bool,
+}),
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+// set other items that will be moving synchronously with this item
+syncItems: PropTypes.arrayOf(PropTypes.string),
 
-### Making a Progressive Web App
+// called whenever the user mouses down on Item
+// (event: Event) => void
+onMouseDownItem: PropTypes.func,
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+// called whenever the user mouses down on resize handler 
+// (event: Event, data: {handler: string}) => void
+// handler can be topLeft || topRight || bottomLeft || bottomRight
+onMouseDownResizeHanlder: PropTypes.func,
 
-### Advanced Configuration
+// called when dragging starts
+// (event: Event, data: {x: number, y: number}) => void
+onDragStart: PropTypes.func,
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+// called when dragging
+// (event: Event, data: {x: number, y: number}) => void
+onDrag: PropTypes.func,
 
-### Deployment
+// called when dragging ends
+// (event: Event, data: {x: number, y: number}) => void
+onDragEnd: PropTypes.func,
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+// called when resizing starts
+// (event: Event, data: {x: number, y: number, width: number, height: number,handler: string}) => void
+onResizeStart: PropTypes.func,
 
-### `npm run build` fails to minify
+// called when resizing
+// (event: Event, data: {x: number, y: number, width: number, height: number,handler: string}) => void
+onResize: PropTypes.func,
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+// called when resizing ends
+// (event: Event, data: {x: number, y: number, width: number, height: number,handler: string}) => void
+onResizeEnd: PropTypes.func,
+
+// Item must have a single child component
+children: PropTypes.element.isRequired,
+```

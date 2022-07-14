@@ -17,7 +17,9 @@ export const SmartBoardCore = (props) => {
         children, 
         className, 
         autoAlignDistance, 
-        style 
+        style,
+        onMouseDown,
+        ...rest 
     } = props;
 	const { setSelected } = useContext(contexts['SelectionContext']);
 
@@ -36,10 +38,12 @@ export const SmartBoardCore = (props) => {
             position: 'relative',
             overflowY: 'hidden',
         }}
-        onMouseDown={() => {
+        onMouseDown={(event) => {
 			setSelected('');
+            onMouseDown(event);
 		}}
         id='smart-board'
+        {...rest}
     >
         {children}
     </div>
@@ -49,4 +53,5 @@ SmartBoardCore.propTypes = {
     className: PropTypes.string,
     style: PropTypes.object,
     autoAlignDistance: PropTypes.number,
+    onMouseDown: PropTypes.func,
 }

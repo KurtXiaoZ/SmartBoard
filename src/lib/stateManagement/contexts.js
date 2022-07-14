@@ -5,4 +5,5 @@ export const contexts = {
   ItemsContext: createContext(),
   MovementContext: createContext(),
   SelectionContext: createContext(),
+  SyncMovContext: createContext(),
 }

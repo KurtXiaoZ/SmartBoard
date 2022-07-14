@@ -14,17 +14,18 @@ export const LineVer = (props) => {
     } = props;
     const [display, setDisplay] = useState(false);
     const { moving } = useContext(contexts['MovementContext']);
+    const { syncMovStates } = useContext(contexts['SyncMovContext']);
     useEffect(() => {
         if(dataCenter.alignDistance === 0) {
             setDisplay(false);
             dataCenter.alignState = {left: null, right: null, top: null, bottom: null, leftX: null, rightX: null, topY: null, bottomY: null};
         }
         else {
-            if(itemId !== dataCenter.curPos.itemId && Math.abs(left - dataCenter.curPos.left || 0) < dataCenter.alignDistance) {
+            if(itemId !== dataCenter.curPos.itemId && dataCenter.curPos.itemId !== null && syncMovStates.syncIds.indexOf(itemId) === -1 && Math.abs(left - dataCenter.curPos.left || 0) < dataCenter.alignDistance) {
                 dataCenter.alignState.left = left;
                 setDisplay(true);
             }
-            else if(itemId !== dataCenter.curPos.itemId && Math.abs(left - dataCenter.curPos.right || 0) < dataCenter.alignDistance) {
+            else if(itemId !== dataCenter.curPos.itemId && dataCenter.curPos.itemId !== null && syncMovStates.syncIds.indexOf(itemId) === -1 && Math.abs(left - dataCenter.curPos.right || 0) < dataCenter.alignDistance) {
                 dataCenter.alignState.right = left;
                 setDisplay(true);
             }

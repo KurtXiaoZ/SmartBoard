@@ -33,6 +33,11 @@ export class DataCenter {
             topY: null,
             bottomY: null,
         }
+        this._syncMov = {
+            syncIds: [],
+            deltaX: 0,
+            deltaY: 0,
+        }
         this._selected = "";
         this._alignDistance = ALIGN_DISTANCE;
         Object.seal(this);
@@ -72,5 +77,11 @@ export class DataCenter {
     }
     set alignDistance(newDistance) {
         this._alignDistance = newDistance;
+    }
+    get syncMov() {
+        return this._syncMov;
+    }
+    set syncMov(newSyncMov) {
+        this._syncMov = Object.assign(this._syncMov, newSyncMov);
     }
 }

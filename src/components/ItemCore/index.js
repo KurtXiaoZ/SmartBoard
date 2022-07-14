@@ -16,12 +16,15 @@ const areEqual = (prevProps, nextProps) => {
     // another item is moving
     if(dataCenter.curPos.itemId !== null && dataCenter.curPos.itemId !== prevProps.itemId) {
         if(prevProps.selected !== nextProps.selected) return false;
+        if(nextProps.syncMovStates.syncIds.indexOf(nextProps.itemId) !== -1) return false;
         return true;
     }
 }
 
 export const ItemCore = memo(props => {
     const {
+        customLeft,
+        customTop,
         children,
         itemId,
         itemState,
@@ -31,6 +34,9 @@ export const ItemCore = memo(props => {
         setSelected,
         setMoving,
         handlerPositions,
+        syncItems = [],
+        syncMovStates,
+        dispatchSyncMov,
         onMouseDownItem,
         onMouseDownResizeHanlder,
         onDragStart,
@@ -57,20 +63,54 @@ export const ItemCore = memo(props => {
     useEffect(() => {
         dispatchItems({type: 'setItemHeight', payload: { itemId, height: getHeight(ref)}});
     }, [getHeight(ref)]);
+    useEffect(() => {
+        if(rightBound !== 0) {
+            let tmpLeft = customLeft;
+            if(tmpLeft < leftBound) tmpLeft = leftBound;
+            else if(tmpLeft + getWidth(ref) > rightBound) tmpLeft = rightBound - getWidth(ref);
+            dispatchItems({type: 'setItemLeft', payload: {itemId, left: tmpLeft}});
+        }
+    }, [customLeft, leftBound, rightBound]);
+    useEffect(() => {
+        if(bottomBound !== 0) {
+            let tmpTop = customTop;
+            if(tmpTop < topBound) tmpTop = topBound;
+            else if(tmpTop + getHeight(ref) > bottomBound) tmpTop = bottomBound - getHeight(ref);
+            dispatchItems({type: 'setItemTop', payload: {itemId, top: tmpTop}});
+        }
+    }, [customTop, topBound, bottomBound]);
+
+    useEffect(() => {
+        if(dataCenter.curPos.itemId !== null && dataCenter.curPos.itemId !== itemId && syncMovStates.syncIds.indexOf(itemId) !== -1) {
+            let newL = left + syncMovStates.deltaX, newT = top + syncMovStates.deltaY;
+            if(newL < leftBound) newL = leftBound;
+            else if(newL + getWidth(ref) > rightBound) newL = rightBound - getWidth(ref);
+            if(newT < topBound) newT = topBound;
+            else if(newT + getHeight(ref) > bottomBound) newT = bottomBound - getHeight(ref);
+            if(syncMovStates.syncIds.indexOf(itemId) !== -1) {
+                dispatchItems({type: 'setItemLeft', payload: {itemId, left: newL}});
+                dispatchItems({type: 'setItemTop', payload: {itemId, top: newT}});
+            }
+        }
+    }, [syncMovStates]);
+
 
     // drag
     const dragStart = (event) => {
         event.stopPropagation();
         // initialize drag
         logger.logDragStart(itemId, left, top);
-        initAction(event, drag, dragEnd, ref, left, top, itemId);
+        // init dragging sync up
+        if(syncItems.length !== 0) dispatchSyncMov({type: 'setSyncIds', payload: syncItems});
         // spotlight item
         spotlightItem(itemStates, itemId, dispatchItems);
         // set moving flag
         setMoving(true);
         setSelected(itemId);
+        // invoke handlers
+        initAction(event, drag, dragEnd, ref, left, top, itemId);
         typeof onDragStart === 'function' && onDragStart(event, {x: left, y: top});
-        typeof onMouseDownItem === 'function' && onMouseDown(event);
+        typeof onMouseDownItem === 'function' && onMouseDownItem(event);
     }
     const drag = (event) => {
         let newLeft = left, alignLeft = null, alignRight = null, newTop = top, alignTop = null, alignBottom = null;
@@ -171,10 +211,15 @@ export const ItemCore = memo(props => {
         dispatchItems({type: 'setItemTop', payload: {itemId, top: newTop}});
         dataCenter.curPos = {left: newLeft, right: newLeft + getWidth(ref), top: newTop, bottom: newTop + getHeight(ref), itemId: itemId};
         typeof onDrag === 'function' && onDrag(event, {x: newLeft, y: newTop});
+        if(syncItems.length !== 0) {
+            dispatchSyncMov({type: 'setDeltaX', payload: newLeft - itemStates[itemId].left});
+            dispatchSyncMov({type: 'setDeltaY', payload: newTop - itemStates[itemId].top});
+        }
     }
     const dragEnd = (event) => {
         logger.logDragEnd(itemId, left, top);
         cleanUpAction(drag, dragEnd);
+        dispatchSyncMov({type: 'reset'});
         setMoving(false);
         setResizing(false);
         typeof onDragEnd === 'function' && onDragEnd(event, {x: left, y: top});
@@ -473,7 +518,7 @@ export const ItemCore = memo(props => {
         typeof onResizeEnd === 'function' && onResize(event, {x: left, y: top, width: getWidth(ref), height: getHeight(ref), handler: 'bottomRight'});
     }
     return <div
-        className={className || "item-core"}
+        className={className}
         style={{
             ...style,
             left: `${left}px`,
@@ -481,6 +526,8 @@ export const ItemCore = memo(props => {
             width: `${getWidth(ref)}px`,
             height: `${getHeight(ref)}px`,
             border: shouldDisplay ? '1px solid #2680eb' : '',
+            position: 'absolute',
+            userSelect: 'none',
             zIndex,
         }}
         onMouseDown={dragStart}

@@ -86,6 +86,7 @@ export function cleanUpAction(onMouseMove, onMouseUp) {
     dataCenter.initXY.y = 0;
     dataCenter.initPos = { left: 0, right: 0, top: 0, bottom: 0 };
     dataCenter.curPos = {left: null, right: null, top: null, bottom: null, itemId: null};
+    dataCenter.alignState = {left: null, right: null, top: null, bottom: null, leftX: null, rightX: null, topY: null, bottomY: null}
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
 }
@@ -100,10 +101,10 @@ export function cleanUpAction(onMouseMove, onMouseUp) {
 export function getBounds(bounds, boardWidth, boardHeight) {
     const { left = 0, right = boardWidth, top = 0, bottom = boardHeight } = bounds || {};
     return {
-        leftBound: left < 0 ? 0 : left,
-        rightBound: right > boardWidth ? boardWidth : right,
-        topBound: top < 0 ? 0 : top,
-        bottomBound: bottom > boardHeight ? boardHeight : bottom,
+        leftBound: (left < 0) ? 0 : left,
+        rightBound: (right > boardWidth) ? boardWidth : right,
+        topBound: (top < 0) ? 0 : top,
+        bottomBound: (bottom > boardHeight) ? boardHeight : bottom,
     };
 }
 
@@ -149,4 +150,12 @@ export function getBounds(bounds, boardWidth, boardHeight) {
         }
     }
     dispatchItems({type: 'setItemZIndex', payload: {itemId, zIndex: maxZIndex + 1}});
+}
+
+
+export function filterSyncItems(syncItems, itemId) {
+    if(syncItems.indexOf(itemId) === -1) return syncItems;
+    const arr = [...syncItems];
+    arr.splice(syncItems.indexOf(itemId), 1);
+    return arr;
 }

@@ -4,7 +4,7 @@ import { useItemsDispatcher, useItemState } from "../../lib/hooks";
 import { contexts } from "../../lib/stateManagement/contexts";
 import { ItemCore } from "../ItemCore";
 import PropTypes from 'prop-types';
-import { getBounds } from "../../lib/util";
+import { filterSyncItems, getBounds } from "../../lib/util";
 
 export const Item = (props) => {
     const {
@@ -24,10 +24,14 @@ export const Item = (props) => {
         onResizeEnd,
         style,
         className,
+        syncItems = [],
+        children,
+        ...rest
     } = props;
     const { itemStates } = useContext(contexts['ItemsContext']);
     const { selected, setSelected } = useContext(contexts['SelectionContext']);
     const { setMoving } = useContext(contexts['MovementContext']);
+    const { syncMovStates, dispatchSyncMov } = useContext(contexts['SyncMovContext']);
     const dispatchItems = useItemsDispatcher();
     const itemState = useItemState(itemId);
     const smartboard = document.getElementById('smart-board');
@@ -47,6 +51,8 @@ export const Item = (props) => {
 
     return <>
         <ItemCore 
+            customLeft={left}
+            customTop={top}
             itemId={itemId}
             itemState={itemState}
             itemStates={itemStates}
@@ -64,8 +70,13 @@ export const Item = (props) => {
             onResizeEnd={onResizeEnd}
             style={style}
             className={className}
+            syncItems={filterSyncItems(syncItems, itemId)}
+            syncMovStates={syncMovStates}
+            dispatchSyncMov={dispatchSyncMov}
             onMouseDownItem={onMouseDownItem}
             onMouseDownResizeHanlder={onMouseDownResizeHanlder}
+            children={children}
+            {...rest}
         />
     </>
 };
@@ -89,6 +100,7 @@ Item.propTypes = {
         bottomLeft: PropTypes.bool,
         bottomRight: PropTypes.bool,
     }),
+    syncItems: PropTypes.arrayOf(PropTypes.string), // other items that will be moving synchronously with this item
     // called whenever the user mouses down on Item
     // (event: Event) => void
     onMouseDownItem: PropTypes.func,
