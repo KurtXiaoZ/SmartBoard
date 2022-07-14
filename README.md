@@ -9,7 +9,7 @@ A React Component for building a low-code platform
 </SmartBoard>
 ```
 
-[Demo](http://react-grid-layout.github.io/react-draggable/example/)
+[Demo](https://KurtXiaoZ.github.io/SmartBoard-Demo)
 
 ### Installing
 ```
